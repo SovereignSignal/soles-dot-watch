@@ -100,7 +100,7 @@ class StockXAdapter(MarketplaceAdapter):
         return listings
 
     def search(self, query: str, size: float | None = None) -> list[SneakerListing]:
-        q = f"Air Jordan {query}"
+        q = query
         raw = self._search_raw(q)
         results = []
         for product in raw:

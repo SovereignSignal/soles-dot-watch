@@ -147,7 +147,7 @@ class EbayAdapter(MarketplaceAdapter):
         return 0.0
 
     def search(self, query: str, size: float | None = None) -> list[SneakerListing]:
-        q = f"Air Jordan {query}"
+        q = query
         if size:
             q += f" Size {size}"
 

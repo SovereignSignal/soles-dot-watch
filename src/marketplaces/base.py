@@ -33,10 +33,10 @@ class MarketplaceAdapter(ABC):
         self, style_code: str, size: float | None = None
     ) -> list[SneakerListing]:
         """
-        Look up a specific sneaker by its Nike style code.
+        Look up a specific sneaker by its style code.
 
         Args:
-            style_code: Nike style code (e.g. "DZ5485-612").
+            style_code: Style code (e.g. "DZ5485-612").
             size: Optional shoe size filter.
 
         Returns:

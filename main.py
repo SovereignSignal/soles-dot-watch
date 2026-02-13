@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Jordan Arbitrage Watcher — CLI entry point.
+soles.watch — CLI entry point.
 
-Find price differences for Air Jordans across sneaker marketplaces.
+Find price differences for sneakers across marketplaces.
 
 Usage:
-    python main.py search "1 Retro High OG"
-    python main.py search "4 Retro Bred" --size 10
+    python main.py search "Air Jordan 1 Retro High OG"
+    python main.py search "Yeezy Boost 350" --size 10
     python main.py lookup DZ5485-612 --size 10.5
     python main.py demo
 """
@@ -28,7 +28,7 @@ from src.watcher import get_available_adapters, scan_for_arbitrage
 
 def cmd_search(args: argparse.Namespace) -> None:
     """Search for a sneaker by name and find arbitrage."""
-    console.print(f"\n[bold]Searching for Air Jordan {args.query}...[/bold]\n")
+    console.print(f"\n[bold]Searching for {args.query}...[/bold]\n")
 
     listings, opps = scan_for_arbitrage(
         query=args.query,
@@ -189,28 +189,28 @@ def cmd_demo(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Air Jordan Arbitrage Watcher — find price gaps across sneaker marketplaces.",
+        description="soles.watch — find price gaps across sneaker marketplaces.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python main.py demo                              Show sample output
-  python main.py status                            Check API configuration
-  python main.py search "1 Retro High OG"          Search by name
-  python main.py search "4 Retro Bred" --size 10   Filter by size
-  python main.py lookup DZ5485-612 --size 10.5      Look up by style code
+  python main.py demo                                        Show sample output
+  python main.py status                                      Check API configuration
+  python main.py search "Air Jordan 1 Retro High OG"         Search by name
+  python main.py search "Yeezy Boost 350 V2" --size 10       Filter by size
+  python main.py lookup DZ5485-612 --size 10.5                Look up by style code
         """,
     )
     subparsers = parser.add_subparsers(dest="command")
 
     # search
     p_search = subparsers.add_parser("search", help="Search by sneaker name")
-    p_search.add_argument("query", help='Search term (e.g. "1 Retro High OG")')
+    p_search.add_argument("query", help='Search term (e.g. "Air Jordan 1 Retro High OG")')
     p_search.add_argument("--size", type=float, help="Shoe size filter")
     p_search.add_argument("--min-profit", type=float, default=0.0, help="Min net profit ($)")
     p_search.set_defaults(func=cmd_search)
 
     # lookup
-    p_lookup = subparsers.add_parser("lookup", help="Look up by Nike style code")
+    p_lookup = subparsers.add_parser("lookup", help="Look up by style code")
     p_lookup.add_argument("style_code", help='Style code (e.g. "DZ5485-612")')
     p_lookup.add_argument("--size", type=float, help="Shoe size filter")
     p_lookup.add_argument("--min-profit", type=float, default=0.0, help="Min net profit ($)")

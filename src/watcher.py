@@ -31,9 +31,9 @@ def scan_for_arbitrage(
     Scan configured marketplaces for a sneaker and find arbitrage opportunities.
 
     Args:
-        query: Search term (e.g. "1 Retro High OG Chicago").
+        query: Search term (e.g. "Air Jordan 1 Retro High OG Chicago").
         size: Optional shoe size to filter.
-        style_code: Optional Nike style code for exact match.
+        style_code: Optional style code for exact match.
         min_profit: Minimum net profit to include.
         adapters: Override which adapters to use.
 
