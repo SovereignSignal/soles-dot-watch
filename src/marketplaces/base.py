@@ -14,6 +14,12 @@ class MarketplaceAdapter(ABC):
         """Human-readable marketplace name."""
         ...
 
+    @property
+    @abstractmethod
+    def configured(self) -> bool:
+        """Whether this adapter has the required credentials set."""
+        ...
+
     @abstractmethod
     def search(self, query: str, size: float | None = None) -> list[SneakerListing]:
         """

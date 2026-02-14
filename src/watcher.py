@@ -1,5 +1,7 @@
 """High-level watcher that coordinates marketplace queries and arbitrage detection."""
 
+import logging
+
 from src.arbitrage import find_arbitrage
 from src.marketplaces.base import MarketplaceAdapter
 from src.marketplaces.ebay import EbayAdapter
@@ -65,10 +67,9 @@ def scan_for_arbitrage(
         except Exception as e:
             errors.append(f"{adapter.name}: {e}")
 
-    if errors:
-        import sys
-        for err in errors:
-            print(f"  Warning: {err}", file=sys.stderr)
+    logger = logging.getLogger(__name__)
+    for err in errors:
+        logger.warning("Marketplace fetch failed: %s", err)
 
     opportunities = find_arbitrage(all_listings, min_net_profit=min_profit)
 

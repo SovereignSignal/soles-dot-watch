@@ -1,7 +1,7 @@
 """Data models for sneaker listings and arbitrage opportunities."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -26,7 +26,7 @@ class SneakerListing:
     last_sale_price: float | None = None
     retail_price: float | None = None
     image_url: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def display_name(self) -> str:

@@ -4,6 +4,7 @@ soles.watch — Web server for Railway deployment.
 Provides a JSON API and a simple HTML dashboard for sneaker arbitrage.
 """
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -13,6 +14,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse

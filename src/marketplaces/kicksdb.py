@@ -8,17 +8,6 @@ from src.marketplaces.base import MarketplaceAdapter
 from src.models.sneaker import Condition, SneakerListing
 
 
-# Marketplace fee estimates (seller fees %) for profit calculations
-PLATFORM_FEES = {
-    "stockx": 9.5,
-    "goat": 9.5,
-    "flightclub": 9.5,
-    "ebay": 13.25,
-    "grailed": 9.0,
-    "kickscrew": 8.0,
-}
-
-
 class KicksDBAdapter(MarketplaceAdapter):
     """
     Pulls data from KicksDB (kicks.dev), which aggregates pricing

@@ -52,7 +52,8 @@ class StockXAdapter(MarketplaceAdapter):
             timeout=15,
         )
         resp.raise_for_status()
-        return resp.json() if isinstance(resp.json(), list) else resp.json().get("products", [])
+        data = resp.json()
+        return data if isinstance(data, list) else data.get("products", [])
 
     def _parse_product(
         self, product: dict, size: float | None = None
