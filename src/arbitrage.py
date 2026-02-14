@@ -89,6 +89,10 @@ def find_arbitrage(
                 if opp.gross_spread < min_gross_spread:
                     continue
 
+                # Reject implausible spreads — likely stale cached prices
+                if opp.gross_spread_pct > 200:
+                    continue
+
                 sell_fee = fees.get(sell.marketplace, fees.get(sell.marketplace.lower(), 10.0))
                 net = opp.net_profit(sell_fee_pct=sell_fee)
                 if net < min_net_profit:

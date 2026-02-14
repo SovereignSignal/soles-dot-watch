@@ -472,7 +472,7 @@ def index() -> HTMLResponse:
                 const totalNet = opps.reduce((s, o) => s + o.est_net_profit, 0);
 
                 html += `<div class="profit-banner">`;
-                html += `<div class="profit-banner-title">Arbitrage Opportunities Found</div>`;
+                html += `<div class="profit-banner-title">Potential Arbitrage Opportunities</div>`;
                 html += `<div class="profit-stats">`;
                 html += `<div class="profit-stat"><div class="profit-stat-value">${{opps.length}}</div><div class="profit-stat-label">Opportunities</div></div>`;
                 html += `<div class="profit-stat"><div class="profit-stat-value">$${{bestNet.toFixed(0)}}</div><div class="profit-stat-label">Best Net Profit</div></div>`;
@@ -503,10 +503,10 @@ def index() -> HTMLResponse:
                     html += `</div></div>`;
 
                     const buyLink = o.buy_url
-                        ? `<a href="${{o.buy_url}}" target="_blank" rel="noopener" class="opp-flow-link">Buy on</a>`
+                        ? `<a href="${{o.buy_url}}" target="_blank" rel="noopener" class="opp-flow-link">Verify &amp; Buy on</a>`
                         : `<div class="opp-flow-label">Buy on</div>`;
                     const sellLink = o.sell_url
-                        ? `<a href="${{o.sell_url}}" target="_blank" rel="noopener" class="opp-flow-link">Sell on</a>`
+                        ? `<a href="${{o.sell_url}}" target="_blank" rel="noopener" class="opp-flow-link">Verify &amp; Sell on</a>`
                         : `<div class="opp-flow-label">Sell on</div>`;
                     const buyMkt = o.buy_url
                         ? `<a href="${{o.buy_url}}" target="_blank" rel="noopener" class="opp-flow-mkt-link">${{o.buy_marketplace}}</a>`
@@ -530,7 +530,7 @@ def index() -> HTMLResponse:
                     html += `</div>`;
                 }}
                 html += `</div>`;
-                html += `<p class="muted">Net estimates include seller fees (~9.5%) but not shipping or taxes.</p>`;
+                html += `<p class="muted" style="margin-top:0.75rem">&#9888;&#65039; Prices are estimates from a third-party aggregator and may be delayed. Always click through to verify current prices on each marketplace before buying or selling. Net estimates include seller fees (~9.5%) but not shipping or taxes.</p>`;
             }} else {{
                 html += `<div class="no-opps-msg">`;
                 html += `<div class="no-opps-msg-title">No arbitrage opportunities found</div>`;

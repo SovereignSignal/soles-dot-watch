@@ -97,7 +97,7 @@ class KicksDBAdapter(MarketplaceAdapter):
 
         listings: list[SneakerListing] = []
 
-        # If we have variant-level data, use it
+        # Only use variant-level data (real size-specific prices)
         variants = product.get("variants") or []
         for v in variants:
             lowest_ask = v.get("lowest_ask")
@@ -108,6 +108,8 @@ class KicksDBAdapter(MarketplaceAdapter):
                 px = float(lowest_ask)
             except (ValueError, TypeError):
                 continue
+            if sz <= 0:
+                continue
             if size and sz != size:
                 continue
             listings.append(
@@ -116,25 +118,6 @@ class KicksDBAdapter(MarketplaceAdapter):
                     name=title,
                     style_code=sku,
                     size=sz,
-                    ask_price=px,
-                    condition=Condition.NEW,
-                    url=link,
-                    image_url=image,
-                )
-            )
-
-        # Fallback: no variants but we have min_price from search results
-        if not listings and min_price:
-            try:
-                px = float(min_price)
-            except (ValueError, TypeError):
-                return []
-            listings.append(
-                SneakerListing(
-                    marketplace="StockX",
-                    name=title,
-                    style_code=sku,
-                    size=size or 0.0,
                     ask_price=px,
                     condition=Condition.NEW,
                     url=link,
@@ -169,6 +152,8 @@ class KicksDBAdapter(MarketplaceAdapter):
                 sz = float(v.get("size", 0))
                 px = float(lowest_ask)
             except (ValueError, TypeError):
+                continue
+            if sz <= 0:
                 continue
             if size and sz != size:
                 continue
