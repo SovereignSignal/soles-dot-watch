@@ -191,34 +191,78 @@ class KicksDBAdapter(MarketplaceAdapter):
     # Public interface
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _norm_sku(sku: str) -> str:
+        """Normalize SKU for cross-platform matching (strip non-alphanumeric)."""
+        return "".join(c for c in sku if c.isalnum()).upper()
+
     def search(self, query: str, size: float | None = None) -> list[SneakerListing]:
         all_listings: list[SneakerListing] = []
 
+        # ---- Step 1: Search both platforms and collect product catalogs ----
+        catalogs: dict[str, list[dict]] = {}
         for plat in PLATFORMS:
             try:
-                products = self._search_platform(plat["path"], query)
+                catalogs[plat["path"]] = self._search_platform(plat["path"], query)
             except Exception as e:
                 logger.warning("KicksDB %s search failed: %s", plat["label"], e)
-                continue
+                catalogs[plat["path"]] = []
 
-            for product in products[:10]:
-                slug = product.get("slug", "")
-                if not slug:
-                    continue
+        # ---- Step 2: Build SKU → slug index per platform ----
+        # {platform: {normalized_sku: (slug, product)}}
+        sku_index: dict[str, dict[str, tuple[str, dict]]] = {}
+        for plat_path, products in catalogs.items():
+            idx: dict[str, tuple[str, dict]] = {}
+            for p in products:
+                sku = p.get("sku", "")
+                slug = p.get("slug", "")
+                if sku and slug:
+                    norm = self._norm_sku(sku)
+                    if norm not in idx:
+                        idx[norm] = (slug, p)
+            sku_index[plat_path] = idx
 
-                # Fetch full product with variant pricing
-                try:
-                    detail = self._get_product_detail(plat["path"], slug)
-                except Exception as e:
-                    logger.warning("KicksDB %s detail failed for %s: %s", plat["label"], slug, e)
-                    detail = None
+        # ---- Step 3: Find SKUs present on BOTH platforms (arbitrage candidates) ----
+        stockx_skus = set(sku_index.get("stockx", {}).keys())
+        goat_skus = set(sku_index.get("goat", {}).keys())
+        cross_skus = stockx_skus & goat_skus
 
-                source = detail if detail else product
+        # Also include top results from each platform even without cross-match
+        # so the user still sees listings
+        solo_stockx = list(stockx_skus - cross_skus)[:3]
+        solo_goat = list(goat_skus - cross_skus)[:3]
 
-                if plat["path"] == "stockx":
-                    all_listings.extend(self._parse_stockx_product(source, size))
-                else:
-                    all_listings.extend(self._parse_goat_product(source, size))
+        logger.info(
+            "KicksDB cross-match: %d StockX, %d GOAT, %d overlap, fetching details for %d products",
+            len(stockx_skus), len(goat_skus), len(cross_skus),
+            len(cross_skus) * 2 + len(solo_stockx) + len(solo_goat),
+        )
+
+        # ---- Step 4: Fetch variant details prioritizing cross-matched SKUs ----
+        def _fetch_and_parse(plat_path: str, slug: str, product: dict) -> list[SneakerListing]:
+            try:
+                detail = self._get_product_detail(plat_path, slug)
+            except Exception as e:
+                logger.warning("KicksDB %s detail failed for %s: %s", plat_path, slug, e)
+                detail = None
+            source = detail if detail else product
+            if plat_path == "stockx":
+                return self._parse_stockx_product(source, size)
+            return self._parse_goat_product(source, size)
+
+        # Cross-matched SKUs (both platforms)
+        for norm_sku in cross_skus:
+            for plat_path in ("stockx", "goat"):
+                slug, product = sku_index[plat_path][norm_sku]
+                all_listings.extend(_fetch_and_parse(plat_path, slug, product))
+
+        # Solo SKUs (top from each platform for display)
+        for norm_sku in solo_stockx:
+            slug, product = sku_index["stockx"][norm_sku]
+            all_listings.extend(_fetch_and_parse("stockx", slug, product))
+        for norm_sku in solo_goat:
+            slug, product = sku_index["goat"][norm_sku]
+            all_listings.extend(_fetch_and_parse("goat", slug, product))
 
         return all_listings
 

@@ -47,11 +47,13 @@ def find_arbitrage(
     if seller_fees:
         fees.update(seller_fees)
 
-    # Group by (style_code, size)
+    # Group by (normalized_style_code, size)
+    # Normalize SKUs so "DZ5485-100" (StockX) matches "DZ5485 100" (GOAT)
     groups: dict[tuple[str, float], list[SneakerListing]] = defaultdict(list)
     for listing in listings:
         if listing.style_code and listing.size > 0:
-            key = (listing.style_code.upper(), listing.size)
+            norm = "".join(c for c in listing.style_code if c.isalnum()).upper()
+            key = (norm, listing.size)
             groups[key].append(listing)
 
     opportunities = []
