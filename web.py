@@ -106,26 +106,44 @@ def index() -> HTMLResponse:
         #results {{ min-height: 100px; }}
         .section-title {{ font-size: 1.3rem; margin: 2rem 0 0.75rem; color: #fff; }}
 
-        /* Listing cards */
-        .listing-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                        gap: 0.75rem; }}
-        .listing-card {{ background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
-                        padding: 0.85rem; display: flex; gap: 0.75rem; align-items: center;
+        /* Sneaker group cards */
+        .sneaker-group {{ background: #111; border: 1px solid #2a2a2a; border-radius: 12px;
+                         padding: 1.25rem; margin-bottom: 1rem; }}
+        .group-header {{ display: flex; gap: 1rem; align-items: center; margin-bottom: 0.75rem; }}
+        .group-img {{ width: 80px; height: 80px; object-fit: contain; border-radius: 10px;
+                     background: #fff; flex-shrink: 0; }}
+        .group-img-placeholder {{ width: 80px; height: 80px; border-radius: 10px; background: #252525;
+                                 display: flex; align-items: center; justify-content: center;
+                                 font-size: 2rem; flex-shrink: 0; }}
+        .group-info {{ flex: 1; min-width: 0; }}
+        .group-name {{ font-size: 1.1rem; color: #fff; font-weight: 600; }}
+        .group-meta {{ font-size: 0.8rem; color: #888; margin-top: 2px; }}
+
+        /* Size pills */
+        .size-label {{ font-size: 0.75rem; color: #888; text-transform: uppercase;
+                      letter-spacing: 0.05em; margin-bottom: 0.4rem; }}
+        .size-pills {{ display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }}
+        .size-pill {{ background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+                     padding: 0.35rem 0.6rem; font-size: 0.8rem; color: #ccc; cursor: pointer;
+                     text-align: center; transition: all 0.15s; display: flex; flex-direction: column;
+                     align-items: center; min-width: 52px; }}
+        .size-pill:hover {{ background: #2563eb; border-color: #2563eb; color: #fff; }}
+        .size-price {{ font-size: 0.65rem; color: #888; margin-top: 1px; }}
+        .size-pill:hover .size-price {{ color: rgba(255,255,255,0.7); }}
+
+        /* Individual listing rows within a group */
+        .listing-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                        gap: 0.5rem; }}
+        .listing-card {{ background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+                        padding: 0.65rem 0.85rem; display: flex; gap: 0.5rem; align-items: center;
                         transition: border-color 0.15s; }}
         .listing-card:hover {{ border-color: #444; }}
-        .listing-img {{ width: 64px; height: 64px; object-fit: contain; border-radius: 8px;
-                       background: #fff; flex-shrink: 0; }}
-        .listing-img-placeholder {{ width: 64px; height: 64px; border-radius: 8px; background: #252525;
-                                   display: flex; align-items: center; justify-content: center;
-                                   font-size: 1.6rem; flex-shrink: 0; }}
         .listing-info {{ flex: 1; min-width: 0; }}
         .listing-name {{ font-size: 0.85rem; color: #fff; margin-bottom: 2px;
                         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
         .listing-detail {{ font-size: 0.75rem; color: #888; }}
-        .listing-price {{ font-family: 'SF Mono', 'Fira Code', monospace; font-size: 1.05rem;
+        .listing-price {{ font-family: 'SF Mono', 'Fira Code', monospace; font-size: 1rem;
                          color: #22c55e; font-weight: 600; white-space: nowrap; }}
-        .listing-marketplace {{ display: inline-block; background: #252525; border-radius: 4px;
-                               padding: 1px 6px; font-size: 0.7rem; color: #aaa; margin-top: 2px; }}
 
         /* Opportunity table */
         table {{ width: 100%; border-collapse: collapse; margin-top: 0.75rem; }}
@@ -162,7 +180,7 @@ def index() -> HTMLResponse:
                        autocomplete="off" />
                 <div class="ac-dropdown" id="acDropdown"></div>
             </div>
-            <input type="number" id="size" placeholder="Size" step="0.5" min="1" max="20" />
+            <input type="number" id="size" placeholder="Any size" step="0.5" min="1" max="20" />
             <button id="searchBtn" onclick="doSearch()">Search</button>
         </div>
 
@@ -293,7 +311,6 @@ def index() -> HTMLResponse:
             const loader = document.getElementById('loader');
             const results = document.getElementById('results');
 
-            document.getElementById('quickSection').style.display = 'none';
             btn.disabled = true;
             loader.style.display = 'block';
             results.innerHTML = '';
@@ -323,29 +340,78 @@ def index() -> HTMLResponse:
             }}
 
             if (data.listings && data.listings.length > 0) {{
-                html += `<h2 class="section-title">Listings (${{data.listings.length}})</h2>`;
-                html += `<div class="listing-grid">`;
+                /* Group listings by sneaker (style_code or name) */
+                const groups = {{}};
                 for (const l of data.listings) {{
-                    const img = l.image_url
-                        ? `<img class="listing-img" src="${{l.image_url}}" alt="" onerror="this.outerHTML='<div class=\\'listing-img-placeholder\\'>👟</div>'">`
-                        : `<div class="listing-img-placeholder">👟</div>`;
-                    const sizeStr = l.size ? `Size ${{l.size}}` : '';
-                    const code = l.style_code || '';
-                    const detail = [code, sizeStr].filter(Boolean).join(' &middot; ');
-                    const nameEl = l.url
-                        ? `<a href="${{l.url}}" target="_blank" rel="noopener" style="color:#fff;text-decoration:none">${{l.name}}</a>`
-                        : l.name;
-                    html += `<div class="listing-card">
-                        ${{img}}
-                        <div class="listing-info">
-                            <div class="listing-name" title="${{l.name}}">${{nameEl}}</div>
-                            <div class="listing-detail">${{detail}}</div>
-                            <div class="listing-marketplace">${{l.marketplace}}</div>
-                        </div>
-                        <div class="listing-price">$${{l.ask_price.toFixed(2)}}</div>
-                    </div>`;
+                    const key = (l.style_code || l.name).toUpperCase();
+                    if (!groups[key]) groups[key] = {{ name: l.name, style_code: l.style_code, image_url: l.image_url, listings: [] }};
+                    groups[key].listings.push(l);
+                    if (l.image_url && !groups[key].image_url) groups[key].image_url = l.image_url;
                 }}
-                html += `</div>`;
+                const groupList = Object.values(groups);
+
+                html += `<h2 class="section-title">${{groupList.length}} Sneaker${{groupList.length !== 1 ? 's' : ''}} Found (${{data.listings.length}} listings)</h2>`;
+
+                for (const g of groupList) {{
+                    const img = g.image_url
+                        ? `<img class="group-img" src="${{g.image_url}}" alt="" onerror="this.outerHTML='<div class=\\'group-img-placeholder\\'>👟</div>'">`
+                        : `<div class="group-img-placeholder">👟</div>`;
+
+                    /* Collect unique sizes */
+                    const sizeMap = {{}};
+                    for (const l of g.listings) {{
+                        if (l.size && l.size > 0) {{
+                            if (!sizeMap[l.size]) sizeMap[l.size] = [];
+                            sizeMap[l.size].push(l);
+                        }}
+                    }}
+                    const sizes = Object.keys(sizeMap).map(Number).sort((a, b) => a - b);
+
+                    /* Marketplace summary */
+                    const marketplaces = [...new Set(g.listings.map(l => l.marketplace))];
+                    const priceRange = g.listings.length > 0
+                        ? `$${{Math.min(...g.listings.map(l => l.ask_price)).toFixed(0)}}` +
+                          (Math.min(...g.listings.map(l => l.ask_price)) !== Math.max(...g.listings.map(l => l.ask_price))
+                            ? ` &ndash; $${{Math.max(...g.listings.map(l => l.ask_price)).toFixed(0)}}` : '')
+                        : '';
+
+                    html += `<div class="sneaker-group">`;
+                    html += `<div class="group-header">`;
+                    html += img;
+                    html += `<div class="group-info">`;
+                    html += `<div class="group-name">${{g.name}}</div>`;
+                    html += `<div class="group-meta">${{g.style_code || ''}}${{g.style_code && priceRange ? ' &middot; ' : ''}}${{priceRange}}</div>`;
+                    html += `<div class="group-meta">${{marketplaces.join(', ')}}</div>`;
+                    html += `</div></div>`;
+
+                    if (sizes.length > 0) {{
+                        html += `<div class="size-label">Available sizes <span class="muted">(click to filter)</span></div>`;
+                        html += `<div class="size-pills">`;
+                        for (const sz of sizes) {{
+                            const lowest = Math.min(...sizeMap[sz].map(l => l.ask_price));
+                            html += `<span class="size-pill" onclick="document.getElementById('size').value=${{sz}};doSearch()">`;
+                            html += `${{sz}}<span class="size-price">$${{lowest.toFixed(0)}}</span></span>`;
+                        }}
+                        html += `</div>`;
+                    }}
+
+                    /* Individual listings for this sneaker */
+                    html += `<div class="listing-grid">`;
+                    for (const l of g.listings.sort((a, b) => a.ask_price - b.ask_price)) {{
+                        const sizeStr = l.size ? `Size ${{l.size}}` : '';
+                        const nameEl = l.url
+                            ? `<a href="${{l.url}}" target="_blank" rel="noopener" style="color:#fff;text-decoration:none">${{l.marketplace}}</a>`
+                            : l.marketplace;
+                        html += `<div class="listing-card">`;
+                        html += `<div class="listing-info">`;
+                        html += `<div class="listing-name">${{nameEl}}</div>`;
+                        html += `<div class="listing-detail">${{sizeStr}}</div>`;
+                        html += `</div>`;
+                        html += `<div class="listing-price">$${{l.ask_price.toFixed(2)}}</div>`;
+                        html += `</div>`;
+                    }}
+                    html += `</div></div>`;
+                }}
             }} else if (!data.error) {{
                 html += `<p class="muted" style="margin-top:1rem;">No listings found. Try a different search term or remove the size filter.</p>`;
             }}
