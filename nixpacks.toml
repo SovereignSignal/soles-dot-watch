@@ -1,12 +1,2 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-[start]
-cmd = "uvicorn web:app --host 0.0.0.0 --port ${PORT:-8000}"
-=======
 [phases.setup]
 nixPkgs = ["python312"]
->>>>>>> Stashed changes
-=======
-[phases.setup]
-nixPkgs = ["python312"]
->>>>>>> Stashed changes
