@@ -51,38 +51,98 @@ def index() -> HTMLResponse:
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }}
-        .container {{ max-width: 900px; margin: 0 auto; padding: 2rem; }}
+        .container {{ max-width: 960px; margin: 0 auto; padding: 2rem; }}
         .logo {{ font-size: 3rem; margin-bottom: 0.25rem; }}
         h1 {{ font-size: 2.5rem; margin-bottom: 0.5rem; color: #fff; }}
         .subtitle {{ color: #888; margin-bottom: 2rem; font-size: 1.1rem; }}
-        .status {{ background: #1a1a1a; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
+        .status {{ background: #1a1a1a; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
                    border: 1px solid #333; }}
         .status-label {{ color: #888; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }}
         .status-value {{ font-size: 1.2rem; margin-top: 0.25rem; }}
-        .search-box {{ display: flex; gap: 0.75rem; margin-bottom: 2rem; }}
+
+        /* Search box with autocomplete */
+        .search-box {{ display: flex; gap: 0.75rem; margin-bottom: 0.5rem; position: relative; }}
+        .search-wrap {{ flex: 1; position: relative; }}
         input, select {{ background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
                         padding: 0.75rem 1rem; color: #fff; font-size: 1rem; }}
-        input[type=text] {{ flex: 1; }}
+        input[type=text] {{ width: 100%; }}
         input[type=number] {{ width: 100px; }}
         button {{ background: #2563eb; color: #fff; border: none; border-radius: 8px;
-                 padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; font-weight: 600; }}
+                 padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; font-weight: 600;
+                 white-space: nowrap; }}
         button:hover {{ background: #1d4ed8; }}
         button:disabled {{ background: #333; cursor: wait; }}
+
+        /* Autocomplete dropdown */
+        .ac-dropdown {{ display: none; position: absolute; top: 100%; left: 0; right: 0;
+                       background: #1a1a1a; border: 1px solid #444; border-top: none;
+                       border-radius: 0 0 8px 8px; z-index: 100; max-height: 400px;
+                       overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }}
+        .ac-item {{ display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem;
+                   cursor: pointer; border-bottom: 1px solid #222; transition: background 0.1s; }}
+        .ac-item:last-child {{ border-bottom: none; }}
+        .ac-item:hover, .ac-item.ac-active {{ background: #252525; }}
+        .ac-img {{ width: 48px; height: 48px; object-fit: contain; border-radius: 6px;
+                  background: #fff; flex-shrink: 0; }}
+        .ac-img-placeholder {{ width: 48px; height: 48px; border-radius: 6px; background: #333;
+                              display: flex; align-items: center; justify-content: center;
+                              font-size: 1.3rem; flex-shrink: 0; }}
+        .ac-info {{ flex: 1; min-width: 0; }}
+        .ac-name {{ font-size: 0.9rem; color: #fff; white-space: nowrap; overflow: hidden;
+                   text-overflow: ellipsis; }}
+        .ac-meta {{ font-size: 0.75rem; color: #888; margin-top: 2px; }}
+
+        /* Quick-search pills */
+        .quick-section {{ margin-bottom: 2rem; }}
+        .quick-label {{ font-size: 0.8rem; color: #666; text-transform: uppercase;
+                       letter-spacing: 0.05em; margin-bottom: 0.5rem; }}
+        .quick-pills {{ display: flex; flex-wrap: wrap; gap: 0.5rem; }}
+        .pill {{ background: #1a1a1a; border: 1px solid #333; border-radius: 20px;
+                padding: 0.4rem 0.9rem; font-size: 0.85rem; color: #ccc; cursor: pointer;
+                transition: all 0.15s; }}
+        .pill:hover {{ background: #2563eb; border-color: #2563eb; color: #fff; }}
+
+        /* Results */
         #results {{ min-height: 100px; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }}
+        .section-title {{ font-size: 1.3rem; margin: 2rem 0 0.75rem; color: #fff; }}
+
+        /* Listing cards */
+        .listing-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                        gap: 0.75rem; }}
+        .listing-card {{ background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
+                        padding: 0.85rem; display: flex; gap: 0.75rem; align-items: center;
+                        transition: border-color 0.15s; }}
+        .listing-card:hover {{ border-color: #444; }}
+        .listing-img {{ width: 64px; height: 64px; object-fit: contain; border-radius: 8px;
+                       background: #fff; flex-shrink: 0; }}
+        .listing-img-placeholder {{ width: 64px; height: 64px; border-radius: 8px; background: #252525;
+                                   display: flex; align-items: center; justify-content: center;
+                                   font-size: 1.6rem; flex-shrink: 0; }}
+        .listing-info {{ flex: 1; min-width: 0; }}
+        .listing-name {{ font-size: 0.85rem; color: #fff; margin-bottom: 2px;
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+        .listing-detail {{ font-size: 0.75rem; color: #888; }}
+        .listing-price {{ font-family: 'SF Mono', 'Fira Code', monospace; font-size: 1.05rem;
+                         color: #22c55e; font-weight: 600; white-space: nowrap; }}
+        .listing-marketplace {{ display: inline-block; background: #252525; border-radius: 4px;
+                               padding: 1px 6px; font-size: 0.7rem; color: #aaa; margin-top: 2px; }}
+
+        /* Opportunity table */
+        table {{ width: 100%; border-collapse: collapse; margin-top: 0.75rem; }}
         th {{ text-align: left; padding: 0.75rem; border-bottom: 2px solid #333; color: #888;
-             font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }}
-        td {{ padding: 0.75rem; border-bottom: 1px solid #222; }}
+             font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }}
+        td {{ padding: 0.75rem; border-bottom: 1px solid #222; font-size: 0.9rem; }}
         .price {{ font-family: 'SF Mono', 'Fira Code', monospace; }}
         .positive {{ color: #22c55e; }}
         .negative {{ color: #ef4444; }}
-        .section-title {{ font-size: 1.3rem; margin: 2rem 0 0.5rem; color: #fff; }}
         .muted {{ color: #666; }}
         .loader {{ display: none; text-align: center; padding: 2rem; color: #888; }}
         .api-hint {{ background: #1a1a0a; border: 1px solid #444; border-radius: 8px;
                      padding: 1rem; margin-top: 1rem; font-size: 0.9rem; color: #aaa; }}
         a {{ color: #60a5fa; text-decoration: none; }}
         a:hover {{ text-decoration: underline; }}
+        .error-msg {{ color: #ef4444; background: #1a1010; border: 1px solid #3a1515;
+                     border-radius: 8px; padding: 1rem; margin-top: 1rem; }}
     </style>
 </head>
 <body>
@@ -97,9 +157,27 @@ def index() -> HTMLResponse:
         </div>
 
         <div class="search-box">
-            <input type="text" id="query" placeholder="Search sneakers (e.g. Air Jordan 1 Retro High OG)" />
+            <div class="search-wrap">
+                <input type="text" id="query" placeholder="Search sneakers by name or style code..."
+                       autocomplete="off" />
+                <div class="ac-dropdown" id="acDropdown"></div>
+            </div>
             <input type="number" id="size" placeholder="Size" step="0.5" min="1" max="20" />
             <button id="searchBtn" onclick="doSearch()">Search</button>
+        </div>
+
+        <div class="quick-section" id="quickSection">
+            <div class="quick-label">Popular searches</div>
+            <div class="quick-pills">
+                <span class="pill" onclick="quickSearch('Air Jordan 1 Retro High OG')">Jordan 1 High OG</span>
+                <span class="pill" onclick="quickSearch('Air Jordan 4 Retro')">Jordan 4 Retro</span>
+                <span class="pill" onclick="quickSearch('Yeezy Boost 350 V2')">Yeezy 350 V2</span>
+                <span class="pill" onclick="quickSearch('Nike Dunk Low')">Nike Dunk Low</span>
+                <span class="pill" onclick="quickSearch('New Balance 550')">New Balance 550</span>
+                <span class="pill" onclick="quickSearch('Air Force 1 Low')">Air Force 1 Low</span>
+                <span class="pill" onclick="quickSearch('Nike SB Dunk Low')">SB Dunk Low</span>
+                <span class="pill" onclick="quickSearch('Air Jordan 11 Retro')">Jordan 11 Retro</span>
+            </div>
         </div>
 
         <div class="loader" id="loader">Searching marketplaces...</div>
@@ -116,8 +194,98 @@ def index() -> HTMLResponse:
     </div>
 
     <script>
+        /* ---- Autocomplete / Typeahead ---- */
+        let acTimer = null;
+        let acIndex = -1;
+        const queryInput = document.getElementById('query');
+        const acDropdown = document.getElementById('acDropdown');
+
+        queryInput.addEventListener('input', () => {{
+            clearTimeout(acTimer);
+            const q = queryInput.value.trim();
+            if (q.length < 2) {{ acDropdown.style.display = 'none'; return; }}
+            acTimer = setTimeout(() => fetchSuggestions(q), 300);
+        }});
+
+        queryInput.addEventListener('keydown', e => {{
+            const items = acDropdown.querySelectorAll('.ac-item');
+            if (e.key === 'ArrowDown') {{
+                e.preventDefault();
+                acIndex = Math.min(acIndex + 1, items.length - 1);
+                updateAcHighlight(items);
+            }} else if (e.key === 'ArrowUp') {{
+                e.preventDefault();
+                acIndex = Math.max(acIndex - 1, -1);
+                updateAcHighlight(items);
+            }} else if (e.key === 'Enter') {{
+                if (acIndex >= 0 && items[acIndex]) {{
+                    items[acIndex].click();
+                }} else {{
+                    acDropdown.style.display = 'none';
+                    doSearch();
+                }}
+            }} else if (e.key === 'Escape') {{
+                acDropdown.style.display = 'none';
+                acIndex = -1;
+            }}
+        }});
+
+        document.addEventListener('click', e => {{
+            if (!e.target.closest('.search-wrap')) acDropdown.style.display = 'none';
+        }});
+
+        function updateAcHighlight(items) {{
+            items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+        }}
+
+        async function fetchSuggestions(q) {{
+            try {{
+                const resp = await fetch(`/api/suggest?q=${{encodeURIComponent(q)}}`);
+                const data = await resp.json();
+                if (!data.suggestions || data.suggestions.length === 0) {{
+                    acDropdown.style.display = 'none';
+                    return;
+                }}
+                acIndex = -1;
+                acDropdown.innerHTML = data.suggestions.map(s => {{
+                    const img = s.image_url
+                        ? `<img class="ac-img" src="${{s.image_url}}" alt="" onerror="this.outerHTML='<div class=\\'ac-img-placeholder\\'>👟</div>'">`
+                        : `<div class="ac-img-placeholder">👟</div>`;
+                    const retail = s.retail_price ? `Retail $${{s.retail_price}}` : '';
+                    const code = s.style_code ? `${{s.style_code}}` : '';
+                    const meta = [code, retail].filter(Boolean).join(' &middot; ');
+                    return `<div class="ac-item" data-name="${{s.name}}" data-code="${{s.style_code || ''}}">
+                        ${{img}}
+                        <div class="ac-info">
+                            <div class="ac-name">${{s.name}}</div>
+                            <div class="ac-meta">${{meta}}</div>
+                        </div>
+                    </div>`;
+                }}).join('');
+                acDropdown.style.display = 'block';
+
+                acDropdown.querySelectorAll('.ac-item').forEach(el => {{
+                    el.addEventListener('click', () => {{
+                        queryInput.value = el.dataset.code || el.dataset.name;
+                        acDropdown.style.display = 'none';
+                        doSearch();
+                    }});
+                }});
+            }} catch (_) {{
+                acDropdown.style.display = 'none';
+            }}
+        }}
+
+        /* ---- Quick-search pills ---- */
+        function quickSearch(term) {{
+            queryInput.value = term;
+            acDropdown.style.display = 'none';
+            doSearch();
+        }}
+
+        /* ---- Main search ---- */
         async function doSearch() {{
-            const query = document.getElementById('query').value.trim();
+            const query = queryInput.value.trim();
             if (!query) return;
 
             const size = document.getElementById('size').value;
@@ -125,6 +293,7 @@ def index() -> HTMLResponse:
             const loader = document.getElementById('loader');
             const results = document.getElementById('results');
 
+            document.getElementById('quickSection').style.display = 'none';
             btn.disabled = true;
             loader.style.display = 'block';
             results.innerHTML = '';
@@ -137,35 +306,53 @@ def index() -> HTMLResponse:
                 const data = await resp.json();
                 renderResults(data);
             }} catch (err) {{
-                results.innerHTML = `<p class="negative">Error: ${{err.message}}</p>`;
+                results.innerHTML = `<div class="error-msg">Error: ${{err.message}}</div>`;
             }} finally {{
                 btn.disabled = false;
                 loader.style.display = 'none';
             }}
         }}
 
-        document.getElementById('query').addEventListener('keydown', e => {{
-            if (e.key === 'Enter') doSearch();
-        }});
-
+        /* ---- Render results ---- */
         function renderResults(data) {{
             const results = document.getElementById('results');
             let html = '';
 
+            if (data.error) {{
+                html += `<div class="error-msg">${{data.error}}</div>`;
+            }}
+
             if (data.listings && data.listings.length > 0) {{
                 html += `<h2 class="section-title">Listings (${{data.listings.length}})</h2>`;
-                html += `<table><tr><th>Marketplace</th><th>Name</th><th>Style</th><th>Size</th><th>Price</th></tr>`;
+                html += `<div class="listing-grid">`;
                 for (const l of data.listings) {{
-                    html += `<tr><td>${{l.marketplace}}</td><td>${{l.name}}</td><td>${{l.style_code}}</td>`;
-                    html += `<td>${{l.size || '?'}}</td><td class="price">$${{l.ask_price.toFixed(2)}}</td></tr>`;
+                    const img = l.image_url
+                        ? `<img class="listing-img" src="${{l.image_url}}" alt="" onerror="this.outerHTML='<div class=\\'listing-img-placeholder\\'>👟</div>'">`
+                        : `<div class="listing-img-placeholder">👟</div>`;
+                    const sizeStr = l.size ? `Size ${{l.size}}` : '';
+                    const code = l.style_code || '';
+                    const detail = [code, sizeStr].filter(Boolean).join(' &middot; ');
+                    const nameEl = l.url
+                        ? `<a href="${{l.url}}" target="_blank" rel="noopener" style="color:#fff;text-decoration:none">${{l.name}}</a>`
+                        : l.name;
+                    html += `<div class="listing-card">
+                        ${{img}}
+                        <div class="listing-info">
+                            <div class="listing-name" title="${{l.name}}">${{nameEl}}</div>
+                            <div class="listing-detail">${{detail}}</div>
+                            <div class="listing-marketplace">${{l.marketplace}}</div>
+                        </div>
+                        <div class="listing-price">$${{l.ask_price.toFixed(2)}}</div>
+                    </div>`;
                 }}
-                html += `</table>`;
-            }} else {{
-                html += `<p class="muted">No listings found.</p>`;
+                html += `</div>`;
+            }} else if (!data.error) {{
+                html += `<p class="muted" style="margin-top:1rem;">No listings found. Try a different search term or remove the size filter.</p>`;
             }}
 
             if (data.opportunities && data.opportunities.length > 0) {{
                 html += `<h2 class="section-title">Arbitrage Opportunities (${{data.opportunities.length}})</h2>`;
+                html += `<div style="overflow-x:auto">`;
                 html += `<table><tr><th>Sneaker</th><th>Size</th><th>Buy From</th><th>Buy @</th>`;
                 html += `<th>Sell On</th><th>Sell @</th><th>Gross</th><th>Est Net</th></tr>`;
                 for (const o of data.opportunities) {{
@@ -176,7 +363,7 @@ def index() -> HTMLResponse:
                     html += `<td class="price positive">$${{o.gross_spread.toFixed(2)}}</td>`;
                     html += `<td class="price ${{netClass}}">$${{o.est_net_profit.toFixed(2)}}</td></tr>`;
                 }}
-                html += `</table>`;
+                html += `</table></div>`;
                 html += `<p class="muted" style="margin-top:0.75rem">Net estimates include seller fees but not shipping or taxes.</p>`;
             }} else if (data.listings && data.listings.length > 0) {{
                 html += `<p class="muted" style="margin-top:1rem">No arbitrage opportunities found for these listings.</p>`;
@@ -246,6 +433,37 @@ def api_search(
             for o in opps
         ],
     }
+
+
+@app.get("/api/suggest")
+def api_suggest(
+    q: str = Query(..., min_length=2, description="Partial search term"),
+):
+    """Return lightweight product suggestions for typeahead (name, style code, image)."""
+    adapters = get_available_adapters()
+    if not adapters:
+        return {"suggestions": []}
+
+    # Use first adapter for fast suggestions
+    adapter = adapters[0]
+    try:
+        listings = adapter.search(q)
+    except Exception:
+        return {"suggestions": []}
+
+    # Deduplicate by style_code — we only need product-level info
+    seen: dict[str, dict] = {}
+    for l in listings:
+        key = l.style_code.upper() if l.style_code else l.name
+        if key not in seen:
+            seen[key] = {
+                "name": l.name,
+                "style_code": l.style_code,
+                "image_url": l.image_url,
+                "retail_price": l.retail_price,
+            }
+
+    return {"suggestions": list(seen.values())[:10]}
 
 
 @app.get("/api/status")
