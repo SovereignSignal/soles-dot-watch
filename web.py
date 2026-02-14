@@ -106,7 +106,58 @@ def index() -> HTMLResponse:
         #results {{ min-height: 100px; }}
         .section-title {{ font-size: 1.3rem; margin: 2rem 0 0.75rem; color: #fff; }}
 
-        /* Sneaker group cards */
+        /* Profit summary banner */
+        .profit-banner {{ background: linear-gradient(135deg, #052e16, #0a3a1a); border: 1px solid #166534;
+                         border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }}
+        .profit-banner-title {{ font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+                               color: #4ade80; margin-bottom: 0.5rem; }}
+        .profit-stats {{ display: flex; gap: 2rem; flex-wrap: wrap; }}
+        .profit-stat {{ text-align: center; }}
+        .profit-stat-value {{ font-size: 1.6rem; font-weight: 700; color: #22c55e;
+                             font-family: 'SF Mono', 'Fira Code', monospace; }}
+        .profit-stat-label {{ font-size: 0.75rem; color: #86efac; margin-top: 2px; }}
+
+        /* Arbitrage opportunity cards */
+        .opp-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+                    gap: 0.85rem; margin-bottom: 1rem; }}
+        .opp-card {{ background: #111; border: 1px solid #1e3a1e; border-radius: 12px;
+                    padding: 1rem 1.15rem; transition: border-color 0.15s, transform 0.15s; }}
+        .opp-card:hover {{ border-color: #22c55e; transform: translateY(-1px); }}
+        .opp-card-header {{ display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; }}
+        .opp-card-img {{ width: 56px; height: 56px; object-fit: contain; border-radius: 8px;
+                        background: #fff; flex-shrink: 0; }}
+        .opp-card-img-ph {{ width: 56px; height: 56px; border-radius: 8px; background: #252525;
+                           display: flex; align-items: center; justify-content: center;
+                           font-size: 1.4rem; flex-shrink: 0; }}
+        .opp-card-title {{ flex: 1; min-width: 0; }}
+        .opp-card-name {{ font-size: 0.9rem; color: #fff; font-weight: 600;
+                         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+        .opp-card-sku {{ font-size: 0.75rem; color: #888; margin-top: 2px; }}
+        .opp-card-profit {{ text-align: right; }}
+        .opp-card-profit-val {{ font-size: 1.3rem; font-weight: 700; color: #22c55e;
+                               font-family: 'SF Mono', 'Fira Code', monospace; }}
+        .opp-card-profit-label {{ font-size: 0.65rem; color: #86efac; }}
+
+        .opp-flow {{ display: flex; align-items: stretch; gap: 0; margin-bottom: 0.6rem;
+                    border-radius: 8px; overflow: hidden; }}
+        .opp-flow-buy {{ flex: 1; background: #0c1f1c; padding: 0.6rem 0.75rem; }}
+        .opp-flow-arrow {{ display: flex; align-items: center; justify-content: center;
+                          background: #1a2e1a; padding: 0 0.5rem; color: #22c55e; font-size: 1.1rem; }}
+        .opp-flow-sell {{ flex: 1; background: #0c1f1c; padding: 0.6rem 0.75rem; text-align: right; }}
+        .opp-flow-label {{ font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em;
+                          color: #888; margin-bottom: 2px; }}
+        .opp-flow-mkt {{ font-size: 0.8rem; color: #ccc; }}
+        .opp-flow-price {{ font-size: 1rem; font-weight: 600;
+                          font-family: 'SF Mono', 'Fira Code', monospace; }}
+        .opp-flow-buy .opp-flow-price {{ color: #60a5fa; }}
+        .opp-flow-sell .opp-flow-price {{ color: #22c55e; }}
+        .opp-card-meta {{ display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; }}
+
+        /* Sneaker group cards (listings) */
+        .listings-toggle {{ background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+                           padding: 0.75rem 1rem; color: #aaa; cursor: pointer; text-align: center;
+                           margin-top: 1rem; font-size: 0.9rem; transition: all 0.15s; }}
+        .listings-toggle:hover {{ border-color: #555; color: #fff; }}
         .sneaker-group {{ background: #111; border: 1px solid #2a2a2a; border-radius: 12px;
                          padding: 1.25rem; margin-bottom: 1rem; }}
         .group-header {{ display: flex; gap: 1rem; align-items: center; margin-bottom: 0.75rem; }}
@@ -145,11 +196,6 @@ def index() -> HTMLResponse:
         .listing-price {{ font-family: 'SF Mono', 'Fira Code', monospace; font-size: 1rem;
                          color: #22c55e; font-weight: 600; white-space: nowrap; }}
 
-        /* Opportunity table */
-        table {{ width: 100%; border-collapse: collapse; margin-top: 0.75rem; }}
-        th {{ text-align: left; padding: 0.75rem; border-bottom: 2px solid #333; color: #888;
-             font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }}
-        td {{ padding: 0.75rem; border-bottom: 1px solid #222; font-size: 0.9rem; }}
         .price {{ font-family: 'SF Mono', 'Fira Code', monospace; }}
         .positive {{ color: #22c55e; }}
         .negative {{ color: #ef4444; }}
@@ -339,25 +385,105 @@ def index() -> HTMLResponse:
                 html += `<div class="error-msg">${{data.error}}</div>`;
             }}
 
-            if (data.listings && data.listings.length > 0) {{
-                /* Group listings by sneaker (style_code or name) */
+            const opps = data.opportunities || [];
+            const listings = data.listings || [];
+
+            /* ========== ARBITRAGE OPPORTUNITIES (shown FIRST) ========== */
+            if (opps.length > 0) {{
+                /* Build image lookup from listings */
+                const imgLookup = {{}};
+                for (const l of listings) {{
+                    const k = (l.style_code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                    if (l.image_url && !imgLookup[k]) imgLookup[k] = l.image_url;
+                }}
+
+                /* Profit summary banner */
+                const bestNet = Math.max(...opps.map(o => o.est_net_profit));
+                const avgNet = opps.reduce((s, o) => s + o.est_net_profit, 0) / opps.length;
+                const totalNet = opps.reduce((s, o) => s + o.est_net_profit, 0);
+
+                html += `<div class="profit-banner">`;
+                html += `<div class="profit-banner-title">Arbitrage Opportunities Found</div>`;
+                html += `<div class="profit-stats">`;
+                html += `<div class="profit-stat"><div class="profit-stat-value">${{opps.length}}</div><div class="profit-stat-label">Opportunities</div></div>`;
+                html += `<div class="profit-stat"><div class="profit-stat-value">$${{bestNet.toFixed(0)}}</div><div class="profit-stat-label">Best Net Profit</div></div>`;
+                html += `<div class="profit-stat"><div class="profit-stat-value">$${{avgNet.toFixed(0)}}</div><div class="profit-stat-label">Avg Net Profit</div></div>`;
+                html += `<div class="profit-stat"><div class="profit-stat-value">$${{totalNet.toFixed(0)}}</div><div class="profit-stat-label">Total If All Flipped</div></div>`;
+                html += `</div></div>`;
+
+                /* Opportunity cards */
+                html += `<div class="opp-grid">`;
+                for (const o of opps) {{
+                    const normSku = (o.style_code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                    const imgUrl = imgLookup[normSku];
+                    const img = imgUrl
+                        ? `<img class="opp-card-img" src="${{imgUrl}}" alt="" onerror="this.outerHTML='<div class=\\'opp-card-img-ph\\'>👟</div>'">`
+                        : `<div class="opp-card-img-ph">👟</div>`;
+                    const profitPct = o.buy_price > 0 ? ((o.est_net_profit / o.buy_price) * 100).toFixed(0) : '?';
+
+                    html += `<div class="opp-card">`;
+                    html += `<div class="opp-card-header">`;
+                    html += img;
+                    html += `<div class="opp-card-title">`;
+                    html += `<div class="opp-card-name" title="${{o.name}}">${{o.name}}</div>`;
+                    html += `<div class="opp-card-sku">${{o.style_code || ''}} &middot; Size ${{o.size}}</div>`;
+                    html += `</div>`;
+                    html += `<div class="opp-card-profit">`;
+                    html += `<div class="opp-card-profit-val">+$${{o.est_net_profit.toFixed(0)}}</div>`;
+                    html += `<div class="opp-card-profit-label">${{profitPct}}% ROI</div>`;
+                    html += `</div></div>`;
+
+                    html += `<div class="opp-flow">`;
+                    html += `<div class="opp-flow-buy"><div class="opp-flow-label">Buy on</div>`;
+                    html += `<div class="opp-flow-mkt">${{o.buy_marketplace}}</div>`;
+                    html += `<div class="opp-flow-price">$${{o.buy_price.toFixed(0)}}</div></div>`;
+                    html += `<div class="opp-flow-arrow">&rarr;</div>`;
+                    html += `<div class="opp-flow-sell"><div class="opp-flow-label">Sell on</div>`;
+                    html += `<div class="opp-flow-mkt">${{o.sell_marketplace}}</div>`;
+                    html += `<div class="opp-flow-price">$${{o.sell_price.toFixed(0)}}</div></div>`;
+                    html += `</div>`;
+
+                    html += `<div class="opp-card-meta">`;
+                    html += `<span>Gross: $${{o.gross_spread.toFixed(0)}} (${{o.gross_spread_pct.toFixed(0)}}%)</span>`;
+                    html += `<span>Net after ~9.5% fees: $${{o.est_net_profit.toFixed(0)}}</span>`;
+                    html += `</div>`;
+                    html += `</div>`;
+                }}
+                html += `</div>`;
+                html += `<p class="muted">Net estimates include seller fees (~9.5%) but not shipping or taxes.</p>`;
+            }}
+
+            /* ========== LISTINGS (secondary, collapsible) ========== */
+            if (listings.length > 0) {{
+                /* Group listings by sneaker */
+                const norm = s => (s || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
                 const groups = {{}};
-                for (const l of data.listings) {{
-                    const key = (l.style_code || l.name).toUpperCase();
+                for (const l of listings) {{
+                    const key = norm(l.style_code) || l.name.toUpperCase();
                     if (!groups[key]) groups[key] = {{ name: l.name, style_code: l.style_code, image_url: l.image_url, listings: [] }};
                     groups[key].listings.push(l);
                     if (l.image_url && !groups[key].image_url) groups[key].image_url = l.image_url;
                 }}
                 const groupList = Object.values(groups);
 
-                html += `<h2 class="section-title">${{groupList.length}} Sneaker${{groupList.length !== 1 ? 's' : ''}} Found (${{data.listings.length}} listings)</h2>`;
+                const listingsId = 'listingsSection';
+                const label = opps.length > 0
+                    ? `Show all ${{listings.length}} listings from ${{groupList.length}} sneaker${{groupList.length !== 1 ? 's' : ''}}`
+                    : `${{groupList.length}} Sneaker${{groupList.length !== 1 ? 's' : ''}} Found (${{listings.length}} listings)`;
+
+                if (opps.length > 0) {{
+                    html += `<div class="listings-toggle" onclick="document.getElementById('${{listingsId}}').style.display=document.getElementById('${{listingsId}}').style.display==='none'?'block':'none';this.style.display='none'">`;
+                    html += `${{label}}</div>`;
+                    html += `<div id="${{listingsId}}" style="display:none">`;
+                }} else {{
+                    html += `<h2 class="section-title">${{label}}</h2>`;
+                }}
 
                 for (const g of groupList) {{
                     const img = g.image_url
                         ? `<img class="group-img" src="${{g.image_url}}" alt="" onerror="this.outerHTML='<div class=\\'group-img-placeholder\\'>👟</div>'">`
                         : `<div class="group-img-placeholder">👟</div>`;
 
-                    /* Collect unique sizes */
                     const sizeMap = {{}};
                     for (const l of g.listings) {{
                         if (l.size && l.size > 0) {{
@@ -366,8 +492,6 @@ def index() -> HTMLResponse:
                         }}
                     }}
                     const sizes = Object.keys(sizeMap).map(Number).sort((a, b) => a - b);
-
-                    /* Marketplace summary */
                     const marketplaces = [...new Set(g.listings.map(l => l.marketplace))];
                     const priceRange = g.listings.length > 0
                         ? `$${{Math.min(...g.listings.map(l => l.ask_price)).toFixed(0)}}` +
@@ -376,9 +500,7 @@ def index() -> HTMLResponse:
                         : '';
 
                     html += `<div class="sneaker-group">`;
-                    html += `<div class="group-header">`;
-                    html += img;
-                    html += `<div class="group-info">`;
+                    html += `<div class="group-header">${{img}}<div class="group-info">`;
                     html += `<div class="group-name">${{g.name}}</div>`;
                     html += `<div class="group-meta">${{g.style_code || ''}}${{g.style_code && priceRange ? ' &middot; ' : ''}}${{priceRange}}</div>`;
                     html += `<div class="group-meta">${{marketplaces.join(', ')}}</div>`;
@@ -395,44 +517,23 @@ def index() -> HTMLResponse:
                         html += `</div>`;
                     }}
 
-                    /* Individual listings for this sneaker */
                     html += `<div class="listing-grid">`;
                     for (const l of g.listings.sort((a, b) => a.ask_price - b.ask_price)) {{
                         const sizeStr = l.size ? `Size ${{l.size}}` : '';
                         const nameEl = l.url
                             ? `<a href="${{l.url}}" target="_blank" rel="noopener" style="color:#fff;text-decoration:none">${{l.marketplace}}</a>`
                             : l.marketplace;
-                        html += `<div class="listing-card">`;
-                        html += `<div class="listing-info">`;
+                        html += `<div class="listing-card"><div class="listing-info">`;
                         html += `<div class="listing-name">${{nameEl}}</div>`;
                         html += `<div class="listing-detail">${{sizeStr}}</div>`;
-                        html += `</div>`;
-                        html += `<div class="listing-price">$${{l.ask_price.toFixed(2)}}</div>`;
-                        html += `</div>`;
+                        html += `</div><div class="listing-price">$${{l.ask_price.toFixed(2)}}</div></div>`;
                     }}
                     html += `</div></div>`;
                 }}
-            }} else if (!data.error) {{
-                html += `<p class="muted" style="margin-top:1rem;">No listings found. Try a different search term or remove the size filter.</p>`;
-            }}
 
-            if (data.opportunities && data.opportunities.length > 0) {{
-                html += `<h2 class="section-title">Arbitrage Opportunities (${{data.opportunities.length}})</h2>`;
-                html += `<div style="overflow-x:auto">`;
-                html += `<table><tr><th>Sneaker</th><th>Size</th><th>Buy From</th><th>Buy @</th>`;
-                html += `<th>Sell On</th><th>Sell @</th><th>Gross</th><th>Est Net</th></tr>`;
-                for (const o of data.opportunities) {{
-                    const netClass = o.est_net_profit >= 0 ? 'positive' : 'negative';
-                    html += `<tr><td>${{o.name}}</td><td>${{o.size}}</td>`;
-                    html += `<td>${{o.buy_marketplace}}</td><td class="price">$${{o.buy_price.toFixed(2)}}</td>`;
-                    html += `<td>${{o.sell_marketplace}}</td><td class="price">$${{o.sell_price.toFixed(2)}}</td>`;
-                    html += `<td class="price positive">$${{o.gross_spread.toFixed(2)}}</td>`;
-                    html += `<td class="price ${{netClass}}">$${{o.est_net_profit.toFixed(2)}}</td></tr>`;
-                }}
-                html += `</table></div>`;
-                html += `<p class="muted" style="margin-top:0.75rem">Net estimates include seller fees but not shipping or taxes.</p>`;
-            }} else if (data.listings && data.listings.length > 0) {{
-                html += `<p class="muted" style="margin-top:1rem">No arbitrage opportunities found for these listings.</p>`;
+                if (opps.length > 0) html += `</div>`;
+            }} else if (!data.error && opps.length === 0) {{
+                html += `<p class="muted" style="margin-top:1rem;">No listings found. Try a different search term or remove the size filter.</p>`;
             }}
 
             results.innerHTML = html;

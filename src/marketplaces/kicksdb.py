@@ -196,73 +196,101 @@ class KicksDBAdapter(MarketplaceAdapter):
         """Normalize SKU for cross-platform matching (strip non-alphanumeric)."""
         return "".join(c for c in sku if c.isalnum()).upper()
 
+    def _fetch_and_parse(
+        self, plat_path: str, slug: str, product: dict, size: float | None = None,
+    ) -> list[SneakerListing]:
+        """Fetch variant details for a product and parse into listings."""
+        try:
+            detail = self._get_product_detail(plat_path, slug)
+        except Exception as e:
+            logger.warning("KicksDB %s detail failed for %s: %s", plat_path, slug, e)
+            detail = None
+        source = detail if detail else product
+        if plat_path == "stockx":
+            return self._parse_stockx_product(source, size)
+        return self._parse_goat_product(source, size)
+
     def search(self, query: str, size: float | None = None) -> list[SneakerListing]:
         all_listings: list[SneakerListing] = []
 
-        # ---- Step 1: Search both platforms and collect product catalogs ----
-        catalogs: dict[str, list[dict]] = {}
-        for plat in PLATFORMS:
+        # ---- Step 1: Search StockX for the query ----
+        try:
+            stockx_products = self._search_platform("stockx", query)
+        except Exception as e:
+            logger.warning("KicksDB StockX search failed: %s", e)
+            stockx_products = []
+
+        # ---- Step 2: Fetch details for top StockX results ----
+        stockx_skus_fetched: dict[str, str] = {}  # norm_sku -> product_name
+        for product in stockx_products[:5]:
+            slug = product.get("slug", "")
+            sku = product.get("sku", "")
+            if not slug:
+                continue
+            all_listings.extend(self._fetch_and_parse("stockx", slug, product, size))
+            if sku:
+                stockx_skus_fetched[self._norm_sku(sku)] = product.get("title", "")
+
+        # ---- Step 3: For each StockX SKU, look it up on GOAT for cross-market data ----
+        goat_skus_found: set[str] = set()
+        for norm_sku, name in stockx_skus_fetched.items():
+            # Search GOAT using the raw SKU (with original formatting)
+            # Find the original SKU from the products list
+            raw_sku = ""
+            for p in stockx_products:
+                if p.get("sku") and self._norm_sku(p["sku"]) == norm_sku:
+                    raw_sku = p["sku"]
+                    break
+            search_term = raw_sku or name
             try:
-                catalogs[plat["path"]] = self._search_platform(plat["path"], query)
+                goat_results = self._search_platform("goat", search_term)
             except Exception as e:
-                logger.warning("KicksDB %s search failed: %s", plat["label"], e)
-                catalogs[plat["path"]] = []
+                logger.warning("KicksDB GOAT lookup failed for %s: %s", search_term, e)
+                continue
 
-        # ---- Step 2: Build SKU → slug index per platform ----
-        # {platform: {normalized_sku: (slug, product)}}
-        sku_index: dict[str, dict[str, tuple[str, dict]]] = {}
-        for plat_path, products in catalogs.items():
-            idx: dict[str, tuple[str, dict]] = {}
-            for p in products:
-                sku = p.get("sku", "")
-                slug = p.get("slug", "")
-                if sku and slug:
-                    norm = self._norm_sku(sku)
-                    if norm not in idx:
-                        idx[norm] = (slug, p)
-            sku_index[plat_path] = idx
+            # Find the matching product on GOAT by SKU
+            for gp in goat_results:
+                goat_sku = gp.get("sku", "")
+                goat_slug = gp.get("slug", "")
+                if goat_sku and goat_slug and self._norm_sku(goat_sku) == norm_sku:
+                    goat_skus_found.add(norm_sku)
+                    all_listings.extend(self._fetch_and_parse("goat", goat_slug, gp, size))
+                    break
 
-        # ---- Step 3: Find SKUs present on BOTH platforms (arbitrage candidates) ----
-        stockx_skus = set(sku_index.get("stockx", {}).keys())
-        goat_skus = set(sku_index.get("goat", {}).keys())
-        cross_skus = stockx_skus & goat_skus
+        # ---- Step 4: Also search GOAT directly for extra coverage ----
+        try:
+            goat_products = self._search_platform("goat", query)
+        except Exception as e:
+            logger.warning("KicksDB GOAT search failed: %s", e)
+            goat_products = []
 
-        # Also include top results from each platform even without cross-match
-        # so the user still sees listings
-        solo_stockx = list(stockx_skus - cross_skus)[:3]
-        solo_goat = list(goat_skus - cross_skus)[:3]
+        for product in goat_products[:3]:
+            slug = product.get("slug", "")
+            sku = product.get("sku", "")
+            if not slug:
+                continue
+            norm = self._norm_sku(sku) if sku else ""
+            # Skip if we already fetched this SKU from GOAT
+            if norm and norm in goat_skus_found:
+                continue
+            all_listings.extend(self._fetch_and_parse("goat", slug, product, size))
+            # If this GOAT product wasn't in StockX results, try to find it there
+            if norm and norm not in stockx_skus_fetched and sku:
+                try:
+                    sx_results = self._search_platform("stockx", sku)
+                    for sp in sx_results:
+                        sx_sku = sp.get("sku", "")
+                        sx_slug = sp.get("slug", "")
+                        if sx_sku and sx_slug and self._norm_sku(sx_sku) == norm:
+                            all_listings.extend(self._fetch_and_parse("stockx", sx_slug, sp, size))
+                            break
+                except Exception:
+                    pass
 
         logger.info(
-            "KicksDB cross-match: %d StockX, %d GOAT, %d overlap, fetching details for %d products",
-            len(stockx_skus), len(goat_skus), len(cross_skus),
-            len(cross_skus) * 2 + len(solo_stockx) + len(solo_goat),
+            "KicksDB search: %d StockX products, %d GOAT cross-matches, %d total listings",
+            len(stockx_skus_fetched), len(goat_skus_found), len(all_listings),
         )
-
-        # ---- Step 4: Fetch variant details prioritizing cross-matched SKUs ----
-        def _fetch_and_parse(plat_path: str, slug: str, product: dict) -> list[SneakerListing]:
-            try:
-                detail = self._get_product_detail(plat_path, slug)
-            except Exception as e:
-                logger.warning("KicksDB %s detail failed for %s: %s", plat_path, slug, e)
-                detail = None
-            source = detail if detail else product
-            if plat_path == "stockx":
-                return self._parse_stockx_product(source, size)
-            return self._parse_goat_product(source, size)
-
-        # Cross-matched SKUs (both platforms)
-        for norm_sku in cross_skus:
-            for plat_path in ("stockx", "goat"):
-                slug, product = sku_index[plat_path][norm_sku]
-                all_listings.extend(_fetch_and_parse(plat_path, slug, product))
-
-        # Solo SKUs (top from each platform for display)
-        for norm_sku in solo_stockx:
-            slug, product = sku_index["stockx"][norm_sku]
-            all_listings.extend(_fetch_and_parse("stockx", slug, product))
-        for norm_sku in solo_goat:
-            slug, product = sku_index["goat"][norm_sku]
-            all_listings.extend(_fetch_and_parse("goat", slug, product))
 
         return all_listings
 
