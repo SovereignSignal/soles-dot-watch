@@ -105,6 +105,24 @@ def index() -> HTMLResponse:
         #results {{ min-height: 100px; }}
         .section-title {{ font-size: 1.3rem; margin: 2rem 0 0.75rem; color: #fff; }}
 
+        /* Tab bar */
+        .tab-bar {{ display: flex; gap: 0; border-bottom: 2px solid #333; margin-bottom: 1.25rem; }}
+        .tab {{ padding: 0.75rem 1.25rem; font-size: 0.95rem; color: #888; cursor: pointer;
+               border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+               display: flex; align-items: center; gap: 0.5rem; user-select: none; }}
+        .tab:hover {{ color: #ccc; }}
+        .tab.active {{ color: #fff; border-bottom-color: #2563eb; font-weight: 600; }}
+        .tab.tab-arb.active {{ border-bottom-color: #22c55e; }}
+        .tab-badge {{ background: #22c55e; color: #000; font-size: 0.7rem; font-weight: 700;
+                     padding: 0.15rem 0.45rem; border-radius: 10px; }}
+        .tab-badge-muted {{ background: #333; color: #aaa; font-size: 0.7rem; font-weight: 600;
+                           padding: 0.15rem 0.45rem; border-radius: 10px; }}
+        .tab-panel {{ display: none; }}
+        .tab-panel.active {{ display: block; }}
+        .no-opps-msg {{ background: #1a1a1a; border: 1px solid #333; border-radius: 12px;
+                       padding: 2rem; text-align: center; color: #888; }}
+        .no-opps-msg-title {{ font-size: 1.1rem; color: #aaa; margin-bottom: 0.5rem; }}
+
         /* Profit summary banner */
         .profit-banner {{ background: linear-gradient(135deg, #052e16, #0a3a1a); border: 1px solid #166534;
                          border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }}
@@ -389,6 +407,14 @@ def index() -> HTMLResponse:
             }}
         }}
 
+        /* ---- Tab switching ---- */
+        function switchTab(tabId) {{
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelector(`[data-tab="${{tabId}}"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }}
+
         /* ---- Render results ---- */
         function renderResults(data) {{
             const results = document.getElementById('results');
@@ -401,12 +427,42 @@ def index() -> HTMLResponse:
             const opps = data.opportunities || [];
             const listings = data.listings || [];
 
-            /* ========== ARBITRAGE OPPORTUNITIES (shown FIRST) ========== */
+            if (listings.length === 0 && opps.length === 0 && !data.error) {{
+                html += `<p class="muted" style="margin-top:1rem;">No listings found. Try a different search term.</p>`;
+                results.innerHTML = html;
+                return;
+            }}
+
+            /* ========== TAB BAR ========== */
+            const defaultTab = opps.length > 0 ? 'panelArb' : 'panelListings';
+            const arbBadge = opps.length > 0
+                ? `<span class="tab-badge">${{opps.length}}</span>`
+                : `<span class="tab-badge-muted">0</span>`;
+
+            /* Group listings for count */
+            const norm = s => (s || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            const groups = {{}};
+            for (const l of listings) {{
+                const key = norm(l.style_code) || l.name.toUpperCase();
+                if (!groups[key]) groups[key] = {{ name: l.name, style_code: l.style_code, image_url: l.image_url, listings: [] }};
+                groups[key].listings.push(l);
+                if (l.image_url && !groups[key].image_url) groups[key].image_url = l.image_url;
+            }}
+            const groupList = Object.values(groups);
+
+            html += `<div class="tab-bar">`;
+            html += `<div class="tab tab-arb ${{defaultTab === 'panelArb' ? 'active' : ''}}" data-tab="panelArb" onclick="switchTab('panelArb')">Arbitrage Deals ${{arbBadge}}</div>`;
+            html += `<div class="tab ${{defaultTab === 'panelListings' ? 'active' : ''}}" data-tab="panelListings" onclick="switchTab('panelListings')">All Listings <span class="tab-badge-muted">${{listings.length}}</span></div>`;
+            html += `</div>`;
+
+            /* ========== ARBITRAGE PANEL ========== */
+            html += `<div id="panelArb" class="tab-panel ${{defaultTab === 'panelArb' ? 'active' : ''}}">`;
+
             if (opps.length > 0) {{
                 /* Build image lookup from listings */
                 const imgLookup = {{}};
                 for (const l of listings) {{
-                    const k = (l.style_code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                    const k = norm(l.style_code);
                     if (l.image_url && !imgLookup[k]) imgLookup[k] = l.image_url;
                 }}
 
@@ -427,8 +483,8 @@ def index() -> HTMLResponse:
                 /* Opportunity cards */
                 html += `<div class="opp-grid">`;
                 for (const o of opps) {{
-                    const normSku = (o.style_code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                    const imgUrl = imgLookup[normSku];
+                    const normSku = norm(o.style_code);
+                    const imgUrl = o.buy_image_url || imgLookup[normSku];
                     const img = imgUrl
                         ? `<img class="opp-card-img" src="${{imgUrl}}" alt="" onerror="this.outerHTML='<div class=\\'opp-card-img-ph\\'>👟</div>'">`
                         : `<div class="opp-card-img-ph">👟</div>`;
@@ -475,33 +531,19 @@ def index() -> HTMLResponse:
                 }}
                 html += `</div>`;
                 html += `<p class="muted">Net estimates include seller fees (~9.5%) but not shipping or taxes.</p>`;
+            }} else {{
+                html += `<div class="no-opps-msg">`;
+                html += `<div class="no-opps-msg-title">No arbitrage opportunities found</div>`;
+                html += `<p>The same shoe needs to be available on both StockX and GOAT with a price difference to create an opportunity. Try searching for popular models like "Nike Dunk Low" or "Jordan 1 Retro".</p>`;
+                html += `</div>`;
             }}
+            html += `</div>`;
 
-            /* ========== LISTINGS (secondary, collapsible) ========== */
+            /* ========== LISTINGS PANEL ========== */
+            html += `<div id="panelListings" class="tab-panel ${{defaultTab === 'panelListings' ? 'active' : ''}}">`;
+
             if (listings.length > 0) {{
-                /* Group listings by sneaker */
-                const norm = s => (s || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                const groups = {{}};
-                for (const l of listings) {{
-                    const key = norm(l.style_code) || l.name.toUpperCase();
-                    if (!groups[key]) groups[key] = {{ name: l.name, style_code: l.style_code, image_url: l.image_url, listings: [] }};
-                    groups[key].listings.push(l);
-                    if (l.image_url && !groups[key].image_url) groups[key].image_url = l.image_url;
-                }}
-                const groupList = Object.values(groups);
-
-                const listingsId = 'listingsSection';
-                const label = opps.length > 0
-                    ? `Show all ${{listings.length}} listings from ${{groupList.length}} sneaker${{groupList.length !== 1 ? 's' : ''}}`
-                    : `${{groupList.length}} Sneaker${{groupList.length !== 1 ? 's' : ''}} Found (${{listings.length}} listings)`;
-
-                if (opps.length > 0) {{
-                    html += `<div class="listings-toggle" onclick="document.getElementById('${{listingsId}}').style.display=document.getElementById('${{listingsId}}').style.display==='none'?'block':'none';this.style.display='none'">`;
-                    html += `${{label}}</div>`;
-                    html += `<div id="${{listingsId}}" style="display:none">`;
-                }} else {{
-                    html += `<h2 class="section-title">${{label}}</h2>`;
-                }}
+                html += `<h2 class="section-title" style="margin-top:0">${{groupList.length}} Sneaker${{groupList.length !== 1 ? 's' : ''}} Found (${{listings.length}} listings)</h2>`;
 
                 for (const g of groupList) {{
                     const img = g.image_url
@@ -554,11 +596,10 @@ def index() -> HTMLResponse:
                     }}
                     html += `</div></div>`;
                 }}
-
-                if (opps.length > 0) html += `</div>`;
-            }} else if (!data.error && opps.length === 0) {{
-                html += `<p class="muted" style="margin-top:1rem;">No listings found. Try a different search term or remove the size filter.</p>`;
+            }} else {{
+                html += `<p class="muted">No listings found.</p>`;
             }}
+            html += `</div>`;
 
             results.innerHTML = html;
         }}
