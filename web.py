@@ -66,7 +66,6 @@ def index() -> HTMLResponse:
         input, select {{ background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
                         padding: 0.75rem 1rem; color: #fff; font-size: 1rem; }}
         input[type=text] {{ width: 100%; }}
-        input[type=number] {{ width: 100px; }}
         button {{ background: #2563eb; color: #fff; border: none; border-radius: 8px;
                  padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; font-weight: 600;
                  white-space: nowrap; }}
@@ -151,6 +150,11 @@ def index() -> HTMLResponse:
                           font-family: 'SF Mono', 'Fira Code', monospace; }}
         .opp-flow-buy .opp-flow-price {{ color: #60a5fa; }}
         .opp-flow-sell .opp-flow-price {{ color: #22c55e; }}
+        .opp-flow-link {{ font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em;
+                         color: #60a5fa; text-decoration: none; display: block; margin-bottom: 2px; }}
+        .opp-flow-link:hover {{ text-decoration: underline; color: #93bbfc; }}
+        .opp-flow-mkt-link {{ font-size: 0.8rem; color: #ccc; text-decoration: none; font-weight: 500; }}
+        .opp-flow-mkt-link:hover {{ color: #fff; text-decoration: underline; }}
         .opp-card-meta {{ display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; }}
 
         /* Sneaker group cards (listings) */
@@ -222,25 +226,36 @@ def index() -> HTMLResponse:
 
         <div class="search-box">
             <div class="search-wrap">
-                <input type="text" id="query" placeholder="Search sneakers by name or style code..."
+                <input type="text" id="query" placeholder="Search any sneaker by name, style code, or brand..."
                        autocomplete="off" />
                 <div class="ac-dropdown" id="acDropdown"></div>
             </div>
-            <input type="number" id="size" placeholder="Any size" step="0.5" min="1" max="20" />
-            <button id="searchBtn" onclick="doSearch()">Search</button>
+            <button id="searchBtn" onclick="doSearch()">Find Deals</button>
         </div>
 
         <div class="quick-section" id="quickSection">
-            <div class="quick-label">Popular searches</div>
+            <div class="quick-label">Quick searches &mdash; or type anything above</div>
             <div class="quick-pills">
                 <span class="pill" onclick="quickSearch('Air Jordan 1 Retro High OG')">Jordan 1 High OG</span>
                 <span class="pill" onclick="quickSearch('Air Jordan 4 Retro')">Jordan 4 Retro</span>
-                <span class="pill" onclick="quickSearch('Yeezy Boost 350 V2')">Yeezy 350 V2</span>
-                <span class="pill" onclick="quickSearch('Nike Dunk Low')">Nike Dunk Low</span>
-                <span class="pill" onclick="quickSearch('New Balance 550')">New Balance 550</span>
-                <span class="pill" onclick="quickSearch('Air Force 1 Low')">Air Force 1 Low</span>
-                <span class="pill" onclick="quickSearch('Nike SB Dunk Low')">SB Dunk Low</span>
                 <span class="pill" onclick="quickSearch('Air Jordan 11 Retro')">Jordan 11 Retro</span>
+                <span class="pill" onclick="quickSearch('Air Jordan 3 Retro')">Jordan 3 Retro</span>
+                <span class="pill" onclick="quickSearch('Nike Dunk Low')">Nike Dunk Low</span>
+                <span class="pill" onclick="quickSearch('Nike SB Dunk Low')">SB Dunk Low</span>
+                <span class="pill" onclick="quickSearch('Air Force 1 Low')">Air Force 1 Low</span>
+                <span class="pill" onclick="quickSearch('Nike Air Max 1')">Air Max 1</span>
+                <span class="pill" onclick="quickSearch('Nike Air Max 90')">Air Max 90</span>
+                <span class="pill" onclick="quickSearch('Yeezy Boost 350 V2')">Yeezy 350 V2</span>
+                <span class="pill" onclick="quickSearch('Yeezy Slide')">Yeezy Slide</span>
+                <span class="pill" onclick="quickSearch('New Balance 550')">New Balance 550</span>
+                <span class="pill" onclick="quickSearch('New Balance 2002R')">New Balance 2002R</span>
+                <span class="pill" onclick="quickSearch('Adidas Samba OG')">Adidas Samba</span>
+                <span class="pill" onclick="quickSearch('Adidas Gazelle')">Adidas Gazelle</span>
+                <span class="pill" onclick="quickSearch('ASICS Gel-Kayano 14')">ASICS Kayano 14</span>
+                <span class="pill" onclick="quickSearch('Salomon XT-6')">Salomon XT-6</span>
+                <span class="pill" onclick="quickSearch('Travis Scott')">Travis Scott</span>
+                <span class="pill" onclick="quickSearch('Off-White Nike')">Off-White x Nike</span>
+                <span class="pill" onclick="quickSearch('A Bathing Ape Bapesta')">BAPE Bapesta</span>
             </div>
         </div>
 
@@ -352,7 +367,6 @@ def index() -> HTMLResponse:
             const query = queryInput.value.trim();
             if (!query) return;
 
-            const size = document.getElementById('size').value;
             const btn = document.getElementById('searchBtn');
             const loader = document.getElementById('loader');
             const results = document.getElementById('results');
@@ -362,7 +376,6 @@ def index() -> HTMLResponse:
             results.innerHTML = '';
 
             let url = `/api/search?query=${{encodeURIComponent(query)}}`;
-            if (size) url += `&size=${{size}}`;
 
             try {{
                 const resp = await fetch(url);
@@ -433,13 +446,24 @@ def index() -> HTMLResponse:
                     html += `<div class="opp-card-profit-label">${{profitPct}}% ROI</div>`;
                     html += `</div></div>`;
 
+                    const buyLink = o.buy_url
+                        ? `<a href="${{o.buy_url}}" target="_blank" rel="noopener" class="opp-flow-link">Buy on</a>`
+                        : `<div class="opp-flow-label">Buy on</div>`;
+                    const sellLink = o.sell_url
+                        ? `<a href="${{o.sell_url}}" target="_blank" rel="noopener" class="opp-flow-link">Sell on</a>`
+                        : `<div class="opp-flow-label">Sell on</div>`;
+                    const buyMkt = o.buy_url
+                        ? `<a href="${{o.buy_url}}" target="_blank" rel="noopener" class="opp-flow-mkt-link">${{o.buy_marketplace}}</a>`
+                        : `<div class="opp-flow-mkt">${{o.buy_marketplace}}</div>`;
+                    const sellMkt = o.sell_url
+                        ? `<a href="${{o.sell_url}}" target="_blank" rel="noopener" class="opp-flow-mkt-link">${{o.sell_marketplace}}</a>`
+                        : `<div class="opp-flow-mkt">${{o.sell_marketplace}}</div>`;
+
                     html += `<div class="opp-flow">`;
-                    html += `<div class="opp-flow-buy"><div class="opp-flow-label">Buy on</div>`;
-                    html += `<div class="opp-flow-mkt">${{o.buy_marketplace}}</div>`;
+                    html += `<div class="opp-flow-buy">${{buyLink}}${{buyMkt}}`;
                     html += `<div class="opp-flow-price">$${{o.buy_price.toFixed(0)}}</div></div>`;
                     html += `<div class="opp-flow-arrow">&rarr;</div>`;
-                    html += `<div class="opp-flow-sell"><div class="opp-flow-label">Sell on</div>`;
-                    html += `<div class="opp-flow-mkt">${{o.sell_marketplace}}</div>`;
+                    html += `<div class="opp-flow-sell">${{sellLink}}${{sellMkt}}`;
                     html += `<div class="opp-flow-price">$${{o.sell_price.toFixed(0)}}</div></div>`;
                     html += `</div>`;
 
@@ -507,11 +531,11 @@ def index() -> HTMLResponse:
                     html += `</div></div>`;
 
                     if (sizes.length > 0) {{
-                        html += `<div class="size-label">Available sizes <span class="muted">(click to filter)</span></div>`;
+                        html += `<div class="size-label">Available sizes</div>`;
                         html += `<div class="size-pills">`;
                         for (const sz of sizes) {{
                             const lowest = Math.min(...sizeMap[sz].map(l => l.ask_price));
-                            html += `<span class="size-pill" onclick="document.getElementById('size').value=${{sz}};doSearch()">`;
+                            html += `<span class="size-pill">`;
                             html += `${{sz}}<span class="size-price">$${{lowest.toFixed(0)}}</span></span>`;
                         }}
                         html += `</div>`;
@@ -586,8 +610,11 @@ def api_search(
                 "size": o.size,
                 "buy_marketplace": o.buy_marketplace,
                 "buy_price": o.buy_listing.ask_price,
+                "buy_url": o.buy_listing.url,
+                "buy_image_url": o.buy_listing.image_url,
                 "sell_marketplace": o.sell_marketplace,
                 "sell_price": o.sell_listing.ask_price,
+                "sell_url": o.sell_listing.url,
                 "gross_spread": o.gross_spread,
                 "gross_spread_pct": o.gross_spread_pct,
                 "est_net_profit": o.net_profit(
